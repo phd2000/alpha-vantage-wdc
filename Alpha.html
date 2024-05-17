@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alpha Vantage WDC</title>
+    <script src="https://tableau.github.io/webdataconnector/tableauwdc-2.3.latest.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+</head>
+<body>
+    <h1>Alpha Vantage Web Data Connector</h1>
+    <form id="form">
+        <label for="symbol">Symbol:</label>
+        <input type="text" id="symbol" name="symbol" value="NVDA" required>
+        <label for="apikey">API Key:</label>
+        <input type="text" id="apikey" name="apikey" value="XSUEJ4X9KB32LB38" required>
+        <button type="submit">Get Data</button>
+    </form>
+
+    <script>
+        (function() {
+            var myConnector = tableau.makeConnector();
+
+            myConnector.getSchema = function(schemaCallback) {
+                var cols = [{
+                    id: "date",
+                    alias: "Date",
+                    dataType: tableau.dataTypeEnum.date
+                }, {
+                    id: "open",
+                    alias: "Open",
+                    dataType: tableau.dataTypeEnum.float
+                }, {
+                    id: "high",
+                    alias: "High",
+                    dataType: tableau.dataTypeEnum.float
+                }, {
+                    id: "low",
+                    alias: "Low",
+                    dataType: tableau.dataTypeEnum.float
+                }, {
+                    id: "close",
+                    alias: "Close",
+                    dataType: tableau.dataTypeEnum.float
+                }, {
+                    id: "volume",
+                    alias: "Volume",
+                    dataType: tableau.dataTypeEnum.int
+                }];
+
+                var tableSchema = {
+                    id: "alphaVantageData",
+                    alias: "Alpha Vantage Stock Data",
+                    columns: cols
+                };
+
+                schemaCallback([tableSchema]);
+            };
+
+            myConnector.getData = function(table, doneCallback) {
+                var formObj = document.forms["form"];
+                var symbol = formObj.elements["symbol"].value;
+                var apikey = formObj.elements["apikey"].value;
+
+                var apiURL = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=" + symbol + "&apikey=" + apikey;
+
+                $.getJSON(apiURL, function(resp) {
+                    var timeSeries = resp["Time Series (Daily)"];
+                    var tableData = [];
+
+                    for (var date in timeSeries) {
+                        tableData.push({
+                            "date": date,
+                            "open": parseFloat(timeSeries[date]["1. open"]),
+                            "high": parseFloat(timeSeries[date]["2. high"]),
+                            "low": parseFloat(timeSeries[date]["3. low"]),
+                            "close": parseFloat(timeSeries[date]["4. close"]),
+                            "volume": parseInt(timeSeries[date]["5. volume"])
+                        });
+                    }
+
+                    table.appendRows(tableData);
+                    doneCallback();
+                });
+            };
+
+            tableau.registerConnector(myConnector);
+
+            document.querySelector("#form").addEventListener("submit", function(e) {
+                e.preventDefault();
+                tableau.connectionName = "Alpha Vantage Stock Data";
+                tableau.submit();
+            });
+        })();
+    </script>
+</body>
+</html>
